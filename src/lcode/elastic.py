@@ -12,8 +12,16 @@ def pagetodata(page,nrows,need_field):
     for i in range(nrows):
         tuple_field=()
         for k,v in enumerate(need_field):
-            
-            tuple_field =tuple_field + (page['hits']['hits'][i]['_source'].get(v,'Null'),)
+            #deperacated!!if  use this one ,please  commnet writer.writerow(need_field) or add field manully in csvfile!!
+            if v in ('str_transfercount','str_trdcount'):              
+                cont = page['hits']['hits'][i]['_source'].get(v,'0')
+                if cont != '0':
+                    cont_v = cont.split('|')
+                    tuple_field =tuple_field + (cont_v[0],cont_v[1],)
+                else:
+                    tuple_field =tuple_field + (0,0,)
+            else:
+                tuple_field =tuple_field + (page['hits']['hits'][i]['_source'].get(v,'0'),)
         
         
 #         data.append((page['hits']['hits'][i]['_source']['long_fundid'],
@@ -27,17 +35,26 @@ def pagetodata(page,nrows,need_field):
 
 
 if __name__ == "__main__":
+    destip = '10.17.24.64'
+    index = 'my_review'
+    mapping = 'cust_mapping'
+    
     csvfile = file('custview.csv','wb')
     
-    need_field=['long_fundid','double_gainaby','double_riskaby','long_hitcount']
+    need_field=['long_fundid','double_totpa','long_applycount','long_busicount','long_firfollow',
+                'long_hitcount','long_logoncount','long_stockcount',
+                'str_transfercount','str_trdcount']
+    need_field_head=['fundid','totpa','applycount','busicount','firfollow',
+                'hitcount','logoncount','stockcount',
+                'transfercount','transferamount','trdcount','trdamount']
     
-    es = Elasticsearch([{'host':'10.237.2.69','port':9200}])
+    es = Elasticsearch([{'host':destip,'port':9200}])
     
     nrows=100
     needrows=100000
     #s=es.search(index='cust_my_review', doc_type="cust_mapping",body=allbody,params=para)
-    page=es.search(index='cust_my_review', 
-                doc_type="cust_mapping",
+    page=es.search(index=index, 
+                doc_type=mapping,
                 scroll = '2m',
                 size=nrows,
                 filter_path=['hits.total','_scroll_id','hits.hits._source'])
@@ -48,7 +65,7 @@ if __name__ == "__main__":
     #print page['hits']['hits'][0]['_source']['long_fundid'],page['hits']['hits'][0]['_source']['long_days']
     
     writer = csv.writer(csvfile)
-    writer.writerow(need_field)
+    writer.writerow(need_field_head)
     data=pagetodata(page, nrows,need_field)
     writer.writerows(data)
     
@@ -72,5 +89,5 @@ if __name__ == "__main__":
         transed = transed + scroll_size
         print "transed size: "+ str(transed)
         
-        print 
+        
 #print s['hits']['hits'][0]['_source']['long_fundid'],s['hits']['hits'][0]['_source']['long_days']
