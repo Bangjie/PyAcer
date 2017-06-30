@@ -1,8 +1,4 @@
-from lcode.solution import Solution
+need_field=['long_fundid','double_gainaby','double_riskaby']
 
-                            
-s=Solution()
-print s.longestPalindrome("babad")
-print s.longestPalindrome("abcda")
-print s.longestPalindrome("babadcbbd")
-print s.longestPalindrome("AAAA")
+for i,v in need_field:
+    print i,v
