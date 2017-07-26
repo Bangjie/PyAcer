@@ -1,14 +1,11 @@
 from elasticsearch import Elasticsearch
 import csv
-
-
+import time
 
 def pagetodata(page,nrows,need_field):
     data = []
-
     
- 
-    
+    #print "page.len:",len(page['hits']['hits'])
     for i in range(nrows):
         tuple_field=()
         for k,v in enumerate(need_field):
@@ -22,8 +19,7 @@ def pagetodata(page,nrows,need_field):
                     tuple_field =tuple_field + (0,0,)
             else:
                 tuple_field =tuple_field + (page['hits']['hits'][i]['_source'].get(v,'0'),)
-        
-        
+                
 #         data.append((page['hits']['hits'][i]['_source']['long_fundid'],
 #                      page['hits']['hits'][i]['_source']['double_gainaby'],
 #                      page['hits']['hits'][i]['_source']['double_riskaby'],
@@ -35,7 +31,8 @@ def pagetodata(page,nrows,need_field):
 
 
 if __name__ == "__main__":
-    destip = '10.17.24.64'
+    start =time.clock()
+    destip = '10.237.2.69'
     index = 'my_review'
     mapping = 'cust_mapping'
     
@@ -51,7 +48,7 @@ if __name__ == "__main__":
     es = Elasticsearch([{'host':destip,'port':9200}])
     
     nrows=100
-    needrows=100000
+   
     #s=es.search(index='cust_my_review', doc_type="cust_mapping",body=allbody,params=para)
     page=es.search(index=index, 
                 doc_type=mapping,
@@ -65,29 +62,32 @@ if __name__ == "__main__":
     #print page['hits']['hits'][0]['_source']['long_fundid'],page['hits']['hits'][0]['_source']['long_days']
     
     writer = csv.writer(csvfile)
-    writer.writerow(need_field_head)
-    data=pagetodata(page, nrows,need_field)
-    writer.writerows(data)
-    
-    
-    
-    transed = 100
+    writer.writerow(need_field_head)                       ##write head
+
+    transed = 0
+    needrows=199   
     while(scroll_size >0 and transed < needrows):
         print "Scrolling..."
         page = es.scroll(scroll_id = sid, scroll ='2m')
         
-        data=pagetodata(page, nrows,need_field)
+        scroll_size = len(page['hits']['hits'])
+        print "scroll size: "+ str(scroll_size)
+        
+        transrow = (needrows-transed) if needrows-transed < scroll_size else scroll_size
+
+        data=pagetodata(page, transrow,need_field)
+            
         print "start to write csv..."
         writer.writerows(data)
         print "write over. "
         # Update the scroll ID
         sid = page['_scroll_id']
         # Get the number of results that we returned in the last scroll
-        scroll_size = len(page['hits']['hits'])
-        print "scroll size: "+ str(scroll_size)
+
         
-        transed = transed + scroll_size
+        transed = transed + transrow
         print "transed size: "+ str(transed)
         
-        
+     
+    print "GetDataElapsedTime:%f s"%(time.clock()-start)   
 #print s['hits']['hits'][0]['_source']['long_fundid'],s['hits']['hits'][0]['_source']['long_days']
